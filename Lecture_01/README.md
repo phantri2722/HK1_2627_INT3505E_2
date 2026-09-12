@@ -14,3 +14,8 @@
 
 ## Problem 05
 ![alt text](Problem_05.png)
+
+## Problem 06
+![alt text](Problem_06.png)
+![alt text](Problem_06-1.png)
+![alt text](Problem_06-2.png)
