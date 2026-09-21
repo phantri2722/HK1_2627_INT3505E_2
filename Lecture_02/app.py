@@ -1,5 +1,6 @@
 import sqlite3
 from flask import Flask, jsonify, request, make_response
+import hashlib
 
 app = Flask(__name__)
 
@@ -26,6 +27,10 @@ def init_db():
     """)
     conn.commit()
     conn.close()
+
+def generate_etag(title, author, price):
+    etag_string = f"{title}:{author}:{price}"
+    return hashlib.md5(etag_string.encode()).hexdigest()
 
 # List + Filter + Pagination + Links
 @app.route("/books", methods=["GET"])
@@ -135,12 +140,14 @@ def create_book():
 
     if price < 0:
         return jsonify(error="Price must be non-negative"), 400
+
+    etag = generate_etag(title, author, price)
     
     conn = get_db()
 
     cursor = conn.execute(
-        "INSERT INTO books (title, author, price) VALUES (?, ?, ?)",
-        (title, author, price)
+        "INSERT INTO books (title, author, price, etag) VALUES (?, ?, ?)",
+        (title, author, price, etag)
     )
 
     conn.commit()
@@ -155,6 +162,44 @@ def create_book():
         "author": author,
         "price": price
     }), 201
+
+@app.route("/books/<int:book_id>", methods=["GET"])
+def get_book(book_id):
+    conn = get_db()
+
+    book = conn.execute(
+        """
+        SELECT id, title, author, price, etag
+        FROM books
+        WHERE id = ?
+        """,
+        (book_id,)
+    ).fetchone()
+
+    conn.close()
+
+    if book is None:
+        return jsonify(error="Book not found"), 404
+
+    etag = book["etag"]
+
+    client_etag = request.headers.get("If-None-Match")
+
+    if client_etag == f'"{etag}"':
+        return "", 304
+
+    body = {
+        "id": book["id"],
+        "title": book["title"],
+        "author": book["author"],
+        "price": book["price"]
+    }
+
+    response = make_response(jsonify(body), 200)
+
+    response.headers["ETag"] = f'"{etag}"'
+
+    return response
 
 if __name__ == "__main__":
     init_db()
