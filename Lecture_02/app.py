@@ -1,51 +1,95 @@
+import sqlite3
 from flask import Flask, jsonify, request, make_response
 
 app = Flask(__name__)
 
-BOOKS = [
-    {"id": 1, "title": "Clean Code", "author": "Robert Martin"},
-    {"id": 2, "title": "Clean Architecture", "author": "Robert Martin"},
-    {"id": 3, "title": "Fluent Python", "author": "Luciano Ramalho"},
-    {"id": 4, "title": "Effective Python", "author": "Brett Slatkin"},
-    {"id": 5, "title": "Python Crash Course", "author": "Eric Matthes"},
-    {"id": 6, "title": "Designing Data-Intensive Applications", "author": "Martin Kleppmann"},
-]
+DATABASE = "books.db"
 
 # pagination parameters
 DEFAULT_SIZE = 20
 MAX_SIZE = 100
 
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_db()
+
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS books (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        author TEXT NOT NULL,
+        price FLOAT NOT NULL)
+    """)
+    conn.commit()
+    conn.close()
+
 # List + Filter + Pagination + Links
-@app.route('/books', methods=['GET'])
+@app.route("/books", methods=["GET"])
 def list_books():
     try:
-        page = int(request.args.get('page', 1))
-        size = int(request.args.get('size', DEFAULT_SIZE))
+        page = int(request.args.get("page", 1))
+        size = int(request.args.get("size", DEFAULT_SIZE))
     except ValueError:
         return jsonify(error="Page and size must be integers"), 400
 
     page = max(page, 1)
     size = max(min(size, MAX_SIZE), 1)
 
-    fit = BOOKS
-
     a = request.args.get("author")
+    q = request.args.get("title", "")
+
+    conn = get_db()
+
+    conditions = []
+    params = []
+
     if a:
-        fit = [b for b in fit if b["author"].lower() == a.lower()]
+        conditions.append("LOWER(author) = LOWER(?)")
+        params.append(a)
 
-    q = (request.args.get("q") or "").lower()
     if q:
-        fit = [b for b in fit if q in b["title"].lower()]
+        conditions.append("LOWER(title) LIKE LOWER(?)")
+        params.append(f"%{q}%")
 
-    # pagination
-    total = len(fit)
-    start = (page - 1) * size
-    end = start + size
+    where_clause = ""
 
-    items = fit[start:end]
-    last = (total + size - 1) // size
+    if conditions:
+        where_clause = " WHERE " + " AND ".join(conditions)
 
-    #HATEOAS links
+    count_query = f"""
+        SELECT COUNT(*)
+        FROM books
+        {where_clause}
+    """
+
+    total = conn.execute(
+        count_query,
+        params
+    ).fetchone()[0]
+
+    offset = (page - 1) * size
+
+    data_query = f"""
+        SELECT id, title, author, price
+        FROM books
+        {where_clause}
+        ORDER BY id
+        LIMIT ? OFFSET ?
+    """
+
+    rows = conn.execute(
+        data_query,
+        params + [size, offset]
+    ).fetchall()
+
+    items = [dict(row) for row in rows]
+
+    last = max((total + size - 1) // size, 1)
+
     def u(p):
         return f"/books?page={p}&size={size}"
 
@@ -57,7 +101,8 @@ def list_books():
 
     if page > 1:
         links["prev"] = {"href": u(page - 1)}
-    if end < total:
+
+    if offset + size < total:
         links["next"] = {"href": u(page + 1)}
 
     body = {
@@ -67,10 +112,50 @@ def list_books():
             "size": size,
             "total": total,
         },
-        "_links": links
+        "_links": links,
     }
+
+    conn.close()
 
     resp = make_response(jsonify(body), 200)
     resp.headers["Cache-Control"] = "public, max-age=30"
 
     return resp
+
+@app.route("/books", methods=["POST"])
+def create_book():
+    data = request.get_json()
+
+    title = data.get("title")
+    author = data.get("author")
+    price = data.get("price")
+
+    if not title or not author or price is None:
+        return jsonify(error="Title, author, and price are required"), 400
+
+    if price < 0:
+        return jsonify(error="Price must be non-negative"), 400
+    
+    conn = get_db()
+
+    cursor = conn.execute(
+        "INSERT INTO books (title, author, price) VALUES (?, ?, ?)",
+        (title, author, price)
+    )
+
+    conn.commit()
+
+    book_id = cursor.lastrowid
+
+    conn.close()
+
+    return jsonify({
+        "id": book_id,
+        "title": title,
+        "author": author,
+        "price": price
+    }), 201
+
+if __name__ == "__main__":
+    init_db()
+    app.run(debug=True)
