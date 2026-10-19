@@ -20,3 +20,12 @@ Here are some test for endpoints:
 
 
 ![alt text](image-1.png)
+
+## Homework 02
+Continue with LAB 01 but this time with sort, filter, and pagination.
+
+I have create a test, you can run it using
+```text
+python -m pytest -v
+
+
