@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://library.example.com/schemas/book.schema.json",
+
+  "title": "Book",
+  "type": "object",
+
+  "required": [
+    "id",
+    "title",
+    "isbn",
+    "category"
+  ],
+
+  "properties": {
+
+    "id": {
+      "type": "string",
+      "pattern": "^book_[a-zA-Z0-9_-]+$"
+    },
+
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+
+    "isbn": {
+      "type": "string",
+      "pattern": "^\\d{13}$"
+    },
+
+    "publishedYear": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1000,
+      "maximum": 2100
+    },
+
+    "category": {
+      "type": "object",
+
+      "required": [
+        "id",
+        "name"
+      ],
+
+      "properties": {
+
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+
+        "name": {
+          "type": "string"
+        },
+
+        "slug": {
+          "type": "string"
+        }
+      },
+
+      "additionalProperties": false
+    },
+
+    "authors": {
+      "type": "array",
+
+      "items": {
+        "type": "object",
+
+        "required": [
+          "id",
+          "name"
+        ],
+
+        "properties": {
+
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+
+          "name": {
+            "type": "string"
+          }
+        },
+
+        "additionalProperties": false
+      }
+    }
+  },
+
+  "additionalProperties": false
+}

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://library.example.com/schemas/loan.schema.json",
+
+  "title": "Loan",
+  "type": "object",
+
+  "required": [
+    "id",
+    "memberId",
+    "copyId",
+    "borrowedAt",
+    "dueAt",
+    "status"
+  ],
+
+  "properties": {
+
+    "id": {
+      "type": "string",
+      "pattern": "^loan_[a-zA-Z0-9_-]+$"
+    },
+
+    "memberId": {
+      "type": "string",
+      "pattern": "^member_[a-zA-Z0-9_-]+$"
+    },
+
+    "copyId": {
+      "type": "string",
+      "pattern": "^copy_[a-zA-Z0-9_-]+$"
+    },
+
+    "borrowedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+
+    "dueAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+
+    "returnedAt": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "returned",
+        "overdue"
+      ]
+    }
+  },
+
+  "additionalProperties": false
+}
