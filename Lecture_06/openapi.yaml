@@ -1,0 +1,262 @@
+openapi: 3.0.3
+info:
+  title: Social Network Authentication and Posts API
+  version: 1.0.0
+  description: |
+    Lecture 6 homework. Login issues access and refresh tokens; refresh renews
+    an access token; post reading is protected by scope and object-level policy.
+    All tokens and user identities below are illustrative.
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local development only; production must use HTTPS
+
+tags:
+  - name: Authentication
+  - name: Posts
+
+paths:
+  /auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Authenticate with email and password
+      description: Public endpoint; no bearer token or OAuth scope is required.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: refreshAccessToken
+      summary: Obtain a new access token
+      description: |
+        Requires a valid refresh JWT, not an access JWT. Refresh tokens must be
+        checked for expiry and revocation, and the server should load current
+        permissions before issuing new access tokens. No posts:read scope is
+        needed to refresh; refresh token type and validity authorize the operation.
+      security:
+        - refreshBearer: []
+      responses:
+        '200':
+          description: Access token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessTokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /posts/{id}:
+    get:
+      tags: [Posts]
+      operationId: getPostById
+      summary: Retrieve a post by ID
+      description: |
+        Requires an access token with posts:read and an object-level check.
+        In this exercise, a published public post may be read by any authenticated
+        holder of posts:read. A private post requires ownership. This object
+        policy is enforced in application code and is not expressible by scope alone.
+      security:
+        - accessBearer: []
+      x-required-scopes:
+        - posts:read
+      parameters:
+        - name: id
+          in: path
+          description: Post ID
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Post returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    accessBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived signed access token; require posts:read claim for post read.
+    refreshBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Refresh-type JWT; only accepted on the refresh endpoint.
+
+  schemas:
+    LoginInput:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: alice@example.test
+        password:
+          type: string
+          format: password
+          minLength: 1
+          writeOnly: true
+          example: example-password
+    TokenPair:
+      type: object
+      additionalProperties: false
+      required: [access_token, refresh_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+          description: Short-lived signed JWT
+        refresh_token:
+          type: string
+          description: Refresh token; store and protect carefully
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+          description: Access token lifetime in seconds
+          example: 900
+    AccessTokenResponse:
+      type: object
+      additionalProperties: false
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+          example: 900
+    Post:
+      type: object
+      additionalProperties: false
+      required: [id, authorId, content, visibility, createdAt]
+      properties:
+        id:
+          type: integer
+          example: 42
+        authorId:
+          type: integer
+          example: 7
+        content:
+          type: string
+          example: Hello world!
+        visibility:
+          type: string
+          enum: [public, private]
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-10-20T08:00:00Z'
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Unauthorized
+        status:
+          type: integer
+          example: 401
+        detail:
+          type: string
+        instance:
+          type: string
+  responses:
+    BadRequest:
+      description: Invalid request parameters or syntax
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Missing, expired, invalid, or wrong-type credential; on login also used for invalid credentials
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Authenticated, but insufficient scope or object-level permission
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Post does not exist (or is intentionally concealed from unauthorized clients)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnsupportedMediaType:
+      description: JSON Content-Type required
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: Request throttled by rate limits
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Suggested retry delay in seconds
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InternalError:
+      description: Unexpected internal failure; no internal details disclosed
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
