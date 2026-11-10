@@ -17,7 +17,7 @@ from schemas import (
 products_bp = Blueprint(
     "Products",
     __name__,
-    url_prefix="/products",
+    url_prefix="/api/v1/products",
     description="Product management operations",
 )
 
