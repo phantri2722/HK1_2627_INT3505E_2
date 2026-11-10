@@ -3,8 +3,8 @@ from sqlalchemy import func, update
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
-from models import Product
-from schemas import (
+from models.products import Product
+from schemas.products import (
     ProductIn,
     ProductOut,
     ProductPatch,
