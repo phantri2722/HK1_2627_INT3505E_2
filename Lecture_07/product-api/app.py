@@ -2,13 +2,14 @@ from flask import Flask
 from flask_smorest import Api
 
 from extensions import db
-from models.orders import Order, OrderItem
 from models.products import Product
+from models.orders import Order, OrderItem
+
 from routes.products import products_bp
 from routes.orders import orders_bp
 
 
-def create_app():
+def create_app(test_config=None):
     app = Flask(__name__)
 
     app.config.update(
@@ -26,6 +27,9 @@ def create_app():
             "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
         ),
     )
+
+    if test_config is not None:
+        app.config.update(test_config)
 
     db.init_app(app)
 
