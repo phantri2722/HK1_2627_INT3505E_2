@@ -1,0 +1,273 @@
+components:
+  responses:
+    DEFAULT_ERROR:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Default error response
+    UNPROCESSABLE_CONTENT:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Unprocessable Content
+  schemas:
+    Error:
+      additionalProperties: false
+      properties:
+        code:
+          description: Error code
+          type: integer
+        errors:
+          additionalProperties: {}
+          description: Errors
+          type: object
+        message:
+          description: Error message
+          type: string
+        status:
+          description: Error name
+          type: string
+      type: object
+    PaginationMetadata:
+      additionalProperties: false
+      properties:
+        first_page:
+          description: First available page number.
+          type: integer
+        last_page:
+          description: Last available page number.
+          type: integer
+        next_page:
+          description: Next page number.
+          type: integer
+        page:
+          description: Current page number.
+          type: integer
+        previous_page:
+          description: Previous page number.
+          type: integer
+        total:
+          description: Total number of items.
+          type: integer
+        total_pages:
+          description: Total number of pages.
+          type: integer
+      type: object
+    ProductIn:
+      additionalProperties: false
+      properties:
+        name:
+          maxLength: 255
+          minLength: 1
+          type: string
+        price_cents:
+          minimum: 0
+          type: integer
+        qty_in_stock:
+          default: 0
+          minimum: 0
+          type: integer
+        sku:
+          maxLength: 32
+          minLength: 3
+          type: string
+      required:
+      - name
+      - price_cents
+      - sku
+      type: object
+    ProductOut:
+      additionalProperties: false
+      properties:
+        id:
+          readOnly: true
+          type: integer
+        name:
+          type: string
+        price_cents:
+          type: integer
+        qty_in_stock:
+          type: integer
+        sku:
+          type: string
+      type: object
+    ProductPage:
+      additionalProperties: false
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ProductOut'
+          type: array
+        page:
+          type: integer
+        size:
+          type: integer
+        total:
+          type: integer
+      type: object
+    ProductPatch:
+      additionalProperties: false
+      properties:
+        name:
+          maxLength: 255
+          minLength: 1
+          type: string
+        price_cents:
+          minimum: 0
+          type: integer
+        qty_in_stock:
+          minimum: 0
+          type: integer
+      type: object
+    ReserveIn:
+      additionalProperties: false
+      properties:
+        qty:
+          minimum: 1
+          type: integer
+      required:
+      - qty
+      type: object
+info:
+  title: Product API
+  version: 1.0.0
+openapi: 3.0.3
+paths:
+  /products:
+    get:
+      parameters:
+      - in: query
+        name: page
+        required: false
+        schema:
+          default: 1
+          minimum: 1
+          type: integer
+      - in: query
+        name: size
+        required: false
+        schema:
+          default: 20
+          maximum: 100
+          minimum: 1
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+          description: OK
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_CONTENT'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: List products with pagination.
+      tags:
+      - Products
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductIn'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductOut'
+          description: Created
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_CONTENT'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: Create a new product.
+      tags:
+      - Products
+  /products/{id}:
+    delete:
+      responses:
+        '204':
+          description: No Content
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: Soft-delete a product.
+      tags:
+      - Products
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductOut'
+          description: OK
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: Retrieve a product by ID.
+      tags:
+      - Products
+    parameters:
+    - in: path
+      name: id
+      required: true
+      schema:
+        minimum: 0
+        type: integer
+    patch:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductPatch'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductOut'
+          description: OK
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_CONTENT'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: Partially update a product.
+      tags:
+      - Products
+  /products/{id}/reserve:
+    parameters:
+    - in: path
+      name: id
+      required: true
+      schema:
+        minimum: 0
+        type: integer
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReserveIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductOut'
+          description: OK
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_CONTENT'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: Reserve product stock.
+      tags:
+      - Products
+tags:
+- description: Product management operations
+  name: Products
