@@ -13,3 +13,9 @@
 
 > Không điền số liệu giả định vào bảng. Không khẳng định hiệu năng production
 > từ SQLite + Flask development server trên máy cá nhân.
+
+| Scenario | Users | Spawn rate | Duration | p95 | Failures | Failure rate | RPS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| A — Baseline | 10 | 2/s | 30s | 19 ms | 0/138 | 0% | 4.85 |
+| B — Normal load | 50 | 5/s | 60s | 23 ms | 1/1,398 | 0.072% | 23.53 |
+| C — Spike | 200 | 50/s | 30s | 51 ms | 5/2,859 | 0.175% | 97.99 |
