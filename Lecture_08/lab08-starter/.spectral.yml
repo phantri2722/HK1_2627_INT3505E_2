@@ -1,0 +1,76 @@
+extends: spectral:oas
+
+rules:
+  # Optional documentation requirements are outside this lab.
+  info-contact: off
+  operation-description: off
+  operation-tags: off
+
+  # Explicitly check the three intentional defects.
+  operation-operationId: error
+
+  no-content-for-204:
+    description: A 204 response must not declare content.
+    severity: error
+    given: "$.paths[*][*].responses['204']"
+    then:
+      field: content
+      function: undefined
+
+  book-year-is-integer:
+    description: Book.year must be declared as an integer.
+    severity: error
+    given: "$.components.schemas.Book.properties.year"
+    then:
+      field: type
+      function: enumeration
+      functionOptions:
+        values:
+          - integer
+
+  # Required custom rule: object responses must declare fields.
+  # For array responses, check the item object instead.
+  response-200-has-fields:
+    description: A 200 response must describe a nonempty object or its array items.
+    severity: error
+    resolved: true
+    given: "$.paths[*][*].responses['200']"
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required: [content]
+          properties:
+            content:
+              type: object
+              required: [application/json]
+              properties:
+                application/json:
+                  type: object
+                  required: [schema]
+                  properties:
+                    schema:
+                      anyOf:
+                        - type: object
+                          required: [type, properties]
+                          properties:
+                            type:
+                              const: object
+                            properties:
+                              type: object
+                              minProperties: 1
+                        - type: object
+                          required: [type, items]
+                          properties:
+                            type:
+                              const: array
+                            items:
+                              type: object
+                              required: [type, properties]
+                              properties:
+                                type:
+                                  const: object
+                                properties:
+                                  type: object
+                                  minProperties: 1
