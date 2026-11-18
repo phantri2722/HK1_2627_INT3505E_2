@@ -1,7 +1,7 @@
 from flask import Flask
 
-from blueprints.v1 import bp as v1_bp
-from blueprints.v2 import bp as v2_bp
+from Lecture_09.practice_1.blueprints.v1 import bp as v1_bp
+from Lecture_09.practice_1.blueprints.v2 import bp as v2_bp
 
 app = Flask(__name__)
 app.register_blueprint(v1_bp, url_prefix="/api/v1")
